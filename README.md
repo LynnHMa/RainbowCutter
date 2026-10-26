@@ -14,7 +14,7 @@ python rainbowcutter.py
 
 ## 首次设置
 
-1. 在“设置”中确认 `whisper.cpp 目录`，默认指向项目内的 `whiper_cpp`。
+1. 在“设置”中确认 `whisper.cpp 目录`，默认指向项目内的 `whiper_cpp`，并[安装合适的ggml模型放入`whiper_cpp/`](https://huggingface.co/ggerganov/whisper.cpp/tree/main)。
 2. 确认“字幕模型目录”中存在 `.bin` 文件；程序启动时会自动扫描全部模型。
 3. 填写 API Base URL、API Key、模型名称。支持官方 OpenAI API 以及返回 OpenAI Chat Completions 格式的中转站。
 4. 选择输出目录并保存设置。
@@ -67,3 +67,5 @@ python rainbowcutter.py
 ## 界面说明
 
 当前桌面端采用产品化应用壳布局：顶部品牌栏、左侧工作区导航、中央主工作台、右侧处理配置和底部实时执行记录。工作台支持 `播客剪辑` 与 `字幕总结` 两种模式。
+
+> 这个项目是我Vibe出来的
