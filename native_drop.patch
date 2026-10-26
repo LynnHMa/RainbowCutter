@@ -1,0 +1,62 @@
+*** Begin Patch
+*** Update File: rainbowcutter.py
+@@
+         self._build_style()
+         self._build_ui()
+         self._install_drag_bindings()
++        self._install_native_file_drop()
+         self._set_window_icon()
+@@
+     def _enable_drop_target(self, widget):
+         try:
+             from tkinterdnd2 import DND_FILES
+             widget.drop_target_register(DND_FILES); widget.dnd_bind("<<Drop>>", lambda e: self._set_files(self.files + list(self.tk.splitlist(e.data))))
+         except Exception: pass
++
++    def _install_native_file_drop(self):
++        if os.name != "nt":
++            return
++        try:
++            user32 = ctypes.windll.user32
++            shell32 = ctypes.windll.shell32
++            hwnd = self._native_hwnd()
++            if not hwnd:
++                return
++            shell32.DragAcceptFiles.argtypes = [ctypes.c_void_p, ctypes.c_bool]
++            shell32.DragAcceptFiles.restype = None
++            shell32.DragQueryFileW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_wchar_p, ctypes.c_uint]
++            shell32.DragQueryFileW.restype = ctypes.c_uint
++            shell32.DragFinish.argtypes = [ctypes.c_void_p]
++            shell32.DragFinish.restype = None
++            shell32.DragAcceptFiles(hwnd, True)
++            self._drop_wndproc = self._make_drop_wndproc(hwnd)
++        except (AttributeError, OSError):
++            self._drop_wndproc = None
++
++    def _make_drop_wndproc(self, hwnd):
++        user32 = ctypes.windll.user32
++        wndproc_type = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, ctypes.c_void_p, ctypes.c_uint, ctypes.c_size_t, ctypes.c_ssize_t)
++        user32.SetWindowLongPtrW.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p]
++        user32.SetWindowLongPtrW.restype = ctypes.c_void_p
++        user32.CallWindowProcW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.c_size_t, ctypes.c_ssize_t]
++        user32.CallWindowProcW.restype = ctypes.c_ssize_t
++        shell32 = ctypes.windll.shell32
++
++        def wndproc(window, message, wparam, lparam):
++            if message == 0x0233:
++                count = shell32.DragQueryFileW(wparam, 0xFFFFFFFF, None, 0)
++                paths = []
++                for index in range(count):
++                    length = shell32.DragQueryFileW(wparam, index, None, 0)
++                    buffer = ctypes.create_unicode_buffer(length + 1)
++                    shell32.DragQueryFileW(wparam, index, buffer, length + 1)
++                    paths.append(buffer.value)
++                shell32.DragFinish(wparam)
++                self.after(0, lambda items=paths: self._set_files(self.files + items))
++                return 0
++            return user32.CallWindowProcW(self._old_wndproc, window, message, wparam, lparam)
++
++        callback = wndproc_type(wndproc)
++        self._old_wndproc = user32.SetWindowLongPtrW(hwnd, -4, callback)
++        return callback
+*** End Patch

@@ -1,0 +1,60 @@
+*** Begin Patch
+*** Update File: rainbowcutter.py
+@@
+         self._drag_pending = False
++        self._maximized = False
++        self._restore_geometry = None
+@@
+     def _build_ui(self):
+-        shell = ttk.Frame(self); shell.pack(fill="both", expand=True)
++        titlebar = tk.Frame(self, bg=self.palette["surface"], height=40)
++        titlebar.pack(fill="x", side="top")
++        titlebar.pack_propagate(False)
++        tk.Label(titlebar, text="RainbowCutter", bg=self.palette["surface"], fg=self.palette["text"], font=("Segoe UI", 10, "bold")).pack(side="left", padx=16)
++        controls = tk.Frame(titlebar, bg=self.palette["surface"]); controls.pack(side="right", fill="y")
++        for text, command, color in (("—", self._minimize_window, self.palette["muted"]), ("□", self._toggle_maximize, self.palette["muted"]), ("×", self.destroy, self.palette["danger"])):
++            tk.Button(controls, text=text, command=command, width=5, bd=0, relief="flat", bg=self.palette["surface"], fg=color, activebackground=self.palette["soft"], activeforeground=self.palette["text"], font=("Segoe UI Symbol", 11), cursor="hand2").pack(side="left", fill="y")
++        shell = ttk.Frame(self); shell.pack(fill="both", expand=True)
+@@
+-        ttk.Separator(sidebar, orient="horizontal").pack(fill="x", pady=18)
+-        ttk.Label(sidebar, text="流程", style="CardSub.TLabel").pack(anchor="w", padx=12, pady=(0, 10))
+-        for label in ("01  导入素材", "02  生成字幕", "03  Agent 总结"):
+-            ttk.Label(sidebar, text="  " + label, style="CardSub.TLabel").pack(anchor="w", padx=12, pady=6)
+         ttk.Label(sidebar, text="RainbowCutter 1.0", style="CardSub.TLabel").pack(side="bottom", anchor="w", padx=12, pady=8)
+@@
+         self._refresh_models()
++
++    def _minimize_window(self):
++        self.iconify()
++
++    def _toggle_maximize(self):
++        if self._maximized:
++            self.state("normal")
++            if self._restore_geometry:
++                self.geometry(self._restore_geometry)
++            self._maximized = False
++        else:
++            self._restore_geometry = self.geometry()
++            self.state("zoomed")
++            self._maximized = True
+@@
+-        preset = tk.Frame(inner, bg="#ffffff"); preset.pack(fill="x", pady=8); tk.Label(preset, text="Agent 模型预设", bg="#ffffff", fg="#1f2329", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 8)); self.preset_var = tk.StringVar(); self.preset_combo = ttk.Combobox(preset, textvariable=self.preset_var, state="readonly", width=28); self.preset_combo.pack(side="left"); ttk.Button(preset, text="加载预设", command=self._load_preset).pack(side="left", padx=8); ttk.Button(preset, text="当前配置另存为…", command=self._save_preset).pack(side="left"); self._refresh_presets()
++        preset = tk.Frame(inner, bg="#ffffff"); preset.pack(fill="x", pady=8); tk.Label(preset, text="Agent 模型预设", bg="#ffffff", fg="#1f2329", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 8)); self.preset_var = tk.StringVar(); self.preset_combo = ttk.Combobox(preset, textvariable=self.preset_var, state="readonly", width=28); self.preset_combo.pack(side="left"); self.preset_combo.bind("<<ComboboxSelected>>", lambda _event: self._load_preset()); ttk.Button(preset, text="加载预设", command=self._load_preset).pack(side="left", padx=8); ttk.Button(preset, text="当前配置另存为…", command=self._save_preset).pack(side="left"); self._refresh_presets()
+@@
+-        for key in ("api_base", "api_key", "model", "temperature"):
++        for key in ("api_base", "api_key", "model", "temperature", "system_prompt"):
+             if key in preset and key in self.setting_vars: self.setting_vars[key].set(str(preset[key]))
++        if "system_prompt" in preset:
++            self.prompt.delete("1.0", "end")
++            self.prompt.insert("1.0", str(preset["system_prompt"]))
++        for key in ("api_base", "api_key", "model", "temperature", "system_prompt"):
++            if key in preset:
++                self.cfg[key] = preset[key]
++        self.agent_model.configure(text=self.cfg["model"])
++        save_config(self.cfg)
+         self._log(f"已加载 Agent 预设：{name}")
+@@
+-        self.cfg.setdefault("presets", {})[name] = {k: self.setting_vars[k].get() for k in ("api_base", "api_key", "model", "temperature")}
++        self.cfg.setdefault("presets", {})[name] = {k: self.setting_vars[k].get() for k in ("api_base", "api_key", "model", "temperature")}
++        self.cfg["presets"][name]["system_prompt"] = self.prompt.get("1.0", "end-1c")
+*** End Patch
